@@ -1,0 +1,10 @@
+[package]
+name = "simple_emulator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[[bin]]
+name = "simple_emulator"
+path = "src/main.rs"
