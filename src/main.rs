@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
 
-// TODO: .text .data
 fn parse_reg(ins: &str) -> usize {
     ins.trim_start_matches('#')
         .trim_end_matches(',')
@@ -25,6 +24,7 @@ fn run_file() {
     let mut queued_labels = vec![];
     let mut jmp_labels = HashMap::new();
 
+    // TODO: add one of the machine cycles of: Fetch the next Instruction
     for line in input_lines {
         if line.ends_with(":") {
             queued_labels.push(line);
