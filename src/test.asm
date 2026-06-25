@@ -1,10 +1,4 @@
-LOAD 0x0, $1
-LOAD 60, $2
-LOAD 60, $3
-climb:
-ADD $1, 0x14
-BNEQ $1, $2, climb
-BEQ $1, $3, match
-ADD $1, 0x3E7
-match:
-ADD $1, 1
+ori $1, $0, 0x0FA5
+ori $2, $1, 0x368F
+andi $3, $1, 0x368F
+xori $4, $1, 0x368F
