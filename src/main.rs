@@ -2,15 +2,16 @@ use std::collections::HashMap;
 use std::fs;
 
 fn parse_reg(field: &str) -> usize {
-    field
-        .trim_start_matches('$')
-        .trim_end_matches(',')
-        .parse()
-        .unwrap_or(0)
+    field.trim_start_matches('$').parse().unwrap_or(0)
 }
 
 fn parse_imm(field: &str) -> u32 {
-    field.trim_end_matches(',').parse().unwrap_or(0)
+    if field.starts_with("0x") {
+        // that means it's hex
+        u32::from_str_radix(field.trim_start_matches("0x"), 16).unwrap_or(0)
+    } else {
+        field.parse().unwrap_or(0)
+    }
 }
 
 fn run_file() {
@@ -25,7 +26,6 @@ fn run_file() {
     let mut queued_labels = vec![];
     let mut jmp_labels = HashMap::new();
 
-    // TODO: add one of the machine cycles of: Fetch the next Instruction
     for line in input_lines {
         if line.ends_with(":") {
             queued_labels.push(line);
@@ -46,8 +46,7 @@ fn run_file() {
     execute_lines(lines, &jmp_labels);
 }
 
-// TODO: $ for register
-// TODO: able to handle hex and decimal for immediate operands
+// TODO: if register 0 then the value always 0
 // NOTE: this code also simulates how the machine cycle works under the hood
 fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
     let mut pc = 0;
