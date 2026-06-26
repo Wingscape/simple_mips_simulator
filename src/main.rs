@@ -142,6 +142,46 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 registers[dest] = registers[reg] << imm;
             }
+            // Syntax: [Instruction] [Destination], [Source], [Imm]
+            "srl" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let imm = parse_imm(fields[2]);
+
+                registers[dest] = registers[reg] >> imm;
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Source]
+            "or" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let reg_2 = parse_reg(fields[2]);
+
+                registers[dest] = registers[reg] | registers[reg_2];
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Source]
+            "and" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let reg_2 = parse_reg(fields[2]);
+
+                registers[dest] = registers[reg] & registers[reg_2];
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Source]
+            "xor" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let reg_2 = parse_reg(fields[2]);
+
+                registers[dest] = registers[reg] ^ registers[reg_2];
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Source]
+            "nor" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let reg_2 = parse_reg(fields[2]);
+
+                registers[dest] = !(registers[reg] | registers[reg_2]);
+            }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
                 break;
