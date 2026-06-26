@@ -52,9 +52,6 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
     let mut pc = 0;
     let mut registers: [u32; 32] = [0; 32];
 
-    // TODO: temp solution
-    registers[0] = 0;
-
     while pc < lines.len() {
         println!("pc: {}", pc);
 
@@ -136,6 +133,14 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let imm = parse_imm(fields[2]);
 
                 registers[dest] = registers[reg] ^ imm;
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Imm]
+            "sll" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let imm = parse_imm(fields[2]);
+
+                registers[dest] = registers[reg] << imm;
             }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
