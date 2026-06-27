@@ -192,8 +192,8 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         registers[0] = 0;
 
         println!(
-            "R25: {}, R11: {}, R12: {}, R13: {}, R14: {}",
-            registers[25], registers[11], registers[12], registers[13], registers[14]
+            "R25: {}, R11: {}, R12: {}",
+            registers[25], registers[11], registers[12]
         );
     }
 }
