@@ -191,7 +191,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         // TODO: temp solution
         registers[0] = 0;
 
-        println!("R1: {}, R2: {}", registers[1], registers[2]);
+        println!(
+            "R25: {}, R11: {}, R12: {}, R13: {}, R14: {}",
+            registers[25], registers[11], registers[12], registers[13], registers[14]
+        );
     }
 }
 

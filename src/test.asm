@@ -1,20 +1,16 @@
-# Load two working values using $0 (always zero) as the source
-ori  $1, $0, 0xF0F0
-ori  $2, $0, 0x0FF0
+or $25, $0, $0
+ori $11, $0, 0xD
+ori $12, $0, 0x9
+ori $13, $0, 0x8
+ori $14, $0, 0x4A
 
-# Register-to-register logical ops on $1 and $2
-# and  $1, $1, $2
-# or   $1, $1, $2
-# xor  $1, $1, $2
-nor  $1, $1, $2
+sll $11, $11, 26
+or $25, $11, $0
 
-# Immediate logical ops (reload $1 first so results are clean)
-# ori  $1, $0, 0xF0F0
-# andi $1, $1, 0x00FF
-# ori  $1, $1, 0x000F
-# xori $1, $1, 0xFFFF
+sll $12, $12, 21
+or $25, $25, $12
 
-# Shifts
-# ori  $2, $0, 0x000F
-# sll  $2, $2, 4
-# srl  $2, $2, 4
+sll $13, $13, 16
+or $25, $25, $13
+
+or $25, $25, $14
