@@ -1,19 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
 
-fn parse_reg(field: &str) -> usize {
-    field.trim_start_matches('$').parse().unwrap_or(0)
-}
-
-fn parse_imm(field: &str) -> u32 {
-    if field.starts_with("0x") {
-        // that means it's hex
-        u32::from_str_radix(field.trim_start_matches("0x"), 16).unwrap_or(0)
-    } else {
-        field.parse().unwrap_or(0)
-    }
-}
-
 struct Registers {
     registers: [u32; 31],
 }
@@ -26,8 +13,9 @@ impl Registers {
 
     // here we can modify the in
     fn set(&mut self, index: usize, value: u32) {
-        // TODO: display error if user is trying to set value for 0 index at input
-        self.registers[index - 1] = value;
+        if index > 0 {
+            self.registers[index - 1] = value;
+        }
     }
 
     // here we can modify the out
@@ -37,6 +25,19 @@ impl Registers {
         } else {
             self.registers[index - 1]
         }
+    }
+}
+
+fn parse_reg(field: &str) -> usize {
+    field.trim_start_matches('$').parse().unwrap_or(0)
+}
+
+fn parse_imm(field: &str) -> u32 {
+    if field.starts_with("0x") {
+        // that means it's hex
+        u32::from_str_radix(field.trim_start_matches("0x"), 16).unwrap_or(0)
+    } else {
+        field.parse().unwrap_or(0)
     }
 }
 
@@ -68,50 +69,48 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
         // #3: execute the instruction
         match opc {
-            // Syntax: [Instruction] [Destination], [Source], [Source], so on so forth
-            "ADD" => {
-                let opr_1 = parse_reg(fields[0]);
-                let opr_2 = parse_imm(fields[1]);
-                // registers[opr_1] += opr_2;
-                // registers[opr_1] = registers[opr_1] + opr_2;
-                registers.set(opr_1, registers.get(opr_1) + opr_2);
-            }
-            // Syntax: [Instruction] [Source], [Destination]
-            "LOAD" => {
-                let opr_1 = parse_imm(fields[0]);
-                let opr_2 = parse_reg(fields[1]);
-                registers.set(opr_2, registers.get(opr_2) + opr_1);
-            }
-            // Syntax: [Instruction] [Source], [Source], [Destination]
-            "BEQ" => {
-                let opr_1 = parse_reg(fields[0]);
-                let opr_2 = parse_reg(fields[1]);
+            // // Syntax: [Instruction] [Destination], [Source], [Source], so on so forth
+            // "ADD" => {
+            //     let opr_1 = parse_reg(fields[0]);
+            //     let opr_2 = parse_imm(fields[1]);
+            //     registers.set(opr_1, registers.get(opr_1) + opr_2);
+            // }
+            // // Syntax: [Instruction] [Source], [Destination]
+            // "LOAD" => {
+            //     let opr_1 = parse_imm(fields[0]);
+            //     let opr_2 = parse_reg(fields[1]);
+            //     registers.set(opr_2, registers.get(opr_2) + opr_1);
+            // }
+            // // Syntax: [Instruction] [Source], [Source], [Destination]
+            // "BEQ" => {
+            //     let opr_1 = parse_reg(fields[0]);
+            //     let opr_2 = parse_reg(fields[1]);
 
-                if registers.get(opr_1) == registers.get(opr_2) {
-                    match jmp_labels.get(fields[2]) {
-                        Some(value) => pc = *value,
-                        _ => {
-                            eprintln!("Label not found: {}", fields[2]);
-                            break;
-                        }
-                    }
-                }
-            }
-            // Syntax: [Instruction] [Source], [Source], [Destination]
-            "BNEQ" => {
-                let opr_1 = parse_reg(fields[0]);
-                let opr_2 = parse_reg(fields[1]);
+            //     if registers.get(opr_1) == registers.get(opr_2) {
+            //         match jmp_labels.get(fields[2]) {
+            //             Some(value) => pc = *value,
+            //             _ => {
+            //                 eprintln!("Label not found: {}", fields[2]);
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
+            // // Syntax: [Instruction] [Source], [Source], [Destination]
+            // "BNEQ" => {
+            //     let opr_1 = parse_reg(fields[0]);
+            //     let opr_2 = parse_reg(fields[1]);
 
-                if registers.get(opr_1) != registers.get(opr_2) {
-                    match jmp_labels.get(fields[2]) {
-                        Some(value) => pc = *value,
-                        _ => {
-                            eprintln!("Label not found: {}", fields[2]);
-                            break;
-                        }
-                    }
-                }
-            }
+            //     if registers.get(opr_1) != registers.get(opr_2) {
+            //         match jmp_labels.get(fields[2]) {
+            //             Some(value) => pc = *value,
+            //             _ => {
+            //                 eprintln!("Label not found: {}", fields[2]);
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
             // Syntax: [Instruction] [Destination], [Source], [Imm]
             "ori" => {
                 let dest = parse_reg(fields[0]);
@@ -190,7 +189,13 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let reg = parse_reg(fields[1]);
                 let reg_2 = parse_reg(fields[2]);
 
-                registers.set(dest, registers.get(reg) + registers.get(reg_2));
+                // use modular addition to wrap around after reaching a specific value
+                // (a + b) (mod 2^N)
+                // how so?
+                // 1111 1111 + 0000 0001
+                // result in 0000 0000 (0 in decimal) with overflow of 1
+                // so it will go back to the beginning
+                registers.set(dest, registers.get(reg).wrapping_add(registers.get(reg_2)));
             }
             // Syntax: [Instruction] [Destination], [Source], [Source]
             "add" => {
@@ -198,7 +203,16 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let reg = parse_reg(fields[1]);
                 let reg_2 = parse_reg(fields[2]);
 
-                registers.set(dest, registers.get(reg) + registers.get(reg_2));
+                // if overflow occurs, just panic the assembly program itself
+                let (result, is_overflow) =
+                    registers.get(reg).overflowing_add(registers.get(reg_2));
+
+                if is_overflow {
+                    eprintln!("Overflow just occured!");
+                    break;
+                }
+
+                registers.set(dest, result);
             }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
@@ -220,7 +234,7 @@ fn run_file() {
     let input_lines: Vec<&str> = content
         .lines()
         .map(|line| line.trim())
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter(|line| !line.is_empty() && !line.starts_with("//"))
         .collect();
 
     let mut lines = vec![];
