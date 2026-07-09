@@ -41,6 +41,10 @@ fn parse_imm(field: &str) -> u32 {
     }
 }
 
+fn parse_imm_signed(field: &str) -> i32 {
+    field.parse().unwrap_or(0)
+}
+
 // this code also simulates how the machine cycle works under the hood
 fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
     let mut pc = 0;
@@ -69,18 +73,6 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
         // #3: execute the instruction
         match opc {
-            // // Syntax: [Instruction] [Destination], [Source], [Source], so on so forth
-            // "ADD" => {
-            //     let opr_1 = parse_reg(fields[0]);
-            //     let opr_2 = parse_imm(fields[1]);
-            //     registers.set(opr_1, registers.get(opr_1) + opr_2);
-            // }
-            // // Syntax: [Instruction] [Source], [Destination]
-            // "LOAD" => {
-            //     let opr_1 = parse_imm(fields[0]);
-            //     let opr_2 = parse_reg(fields[1]);
-            //     registers.set(opr_2, registers.get(opr_2) + opr_1);
-            // }
             // // Syntax: [Instruction] [Source], [Source], [Destination]
             // "BEQ" => {
             //     let opr_1 = parse_reg(fields[0]);
@@ -214,6 +206,57 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 registers.set(dest, result);
             }
+            // so addiu and addi both always treat the immediate as signed integer
+            // Syntax: [Instruction] [Destination], [Source], [Imm]
+            "addiu" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                // it copy over the binary from signed integer to unsigned
+                let imm = parse_imm_signed(fields[2]) as u32;
+
+                registers.set(dest, registers.get(reg).wrapping_add(imm));
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Imm]
+            "addi" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let imm = parse_imm_signed(fields[2]) as u32;
+
+                // if overflow occurs, just panic the assembly program itself
+                let (result, is_overflow) = registers.get(reg).overflowing_add(imm);
+
+                if is_overflow {
+                    eprintln!("Overflow just occured!");
+                    break;
+                }
+
+                registers.set(dest, result);
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Source]
+            "subu" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let reg_2 = parse_reg(fields[2]);
+
+                registers.set(dest, registers.get(reg).wrapping_sub(registers.get(reg_2)));
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Source]
+            "sub" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let reg_2 = parse_reg(fields[2]);
+
+                // if overflow occurs, just panic the assembly program itself
+                let (result, is_overflow) =
+                    registers.get(reg).overflowing_sub(registers.get(reg_2));
+
+                if is_overflow {
+                    eprintln!("Overflow just occured!");
+                    break;
+                }
+
+                registers.set(dest, result);
+            }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
                 break;
@@ -221,10 +264,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         }
 
         println!(
-            "R25: {}, R11: {}, R12: {}",
-            registers.get(25),
-            registers.get(11),
-            registers.get(12)
+            "R10: {}, R8: {}, R7: {}",
+            registers.get(10),
+            registers.get(8),
+            registers.get(7)
         );
     }
 }
