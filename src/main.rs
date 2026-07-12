@@ -3,12 +3,16 @@ use std::fs;
 
 struct Registers {
     registers: [u32; 31],
+    hilo: u64,
 }
 
 // abstraction
 impl Registers {
     fn new() -> Self {
-        Self { registers: [0; 31] }
+        Self {
+            registers: [0; 31],
+            hilo: 0,
+        }
     }
 
     // here we can modify the in
@@ -25,6 +29,18 @@ impl Registers {
         } else {
             self.registers[index - 1]
         }
+    }
+
+    fn set_hilo(&mut self, value: u64) {
+        self.hilo = value;
+    }
+
+    fn get_hi(&self) -> u32 {
+        (self.hilo >> 32) as u32
+    }
+
+    fn get_lo(&self) -> u32 {
+        self.hilo as u32
     }
 }
 
@@ -73,36 +89,6 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
         // #3: execute the instruction
         match opc {
-            // // Syntax: [Instruction] [Source], [Source], [Destination]
-            // "BEQ" => {
-            //     let opr_1 = parse_reg(fields[0]);
-            //     let opr_2 = parse_reg(fields[1]);
-
-            //     if registers.get(opr_1) == registers.get(opr_2) {
-            //         match jmp_labels.get(fields[2]) {
-            //             Some(value) => pc = *value,
-            //             _ => {
-            //                 eprintln!("Label not found: {}", fields[2]);
-            //                 break;
-            //             }
-            //         }
-            //     }
-            // }
-            // // Syntax: [Instruction] [Source], [Source], [Destination]
-            // "BNEQ" => {
-            //     let opr_1 = parse_reg(fields[0]);
-            //     let opr_2 = parse_reg(fields[1]);
-
-            //     if registers.get(opr_1) != registers.get(opr_2) {
-            //         match jmp_labels.get(fields[2]) {
-            //             Some(value) => pc = *value,
-            //             _ => {
-            //                 eprintln!("Label not found: {}", fields[2]);
-            //                 break;
-            //             }
-            //         }
-            //     }
-            // }
             // Syntax: [Instruction] [Destination], [Source], [Imm]
             "ori" => {
                 let dest = parse_reg(fields[0]);
@@ -257,6 +243,36 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 registers.set(dest, result);
             }
+            // Signed Multiplication
+            // Syntax: [Instruction] [Source], [Source]
+            "mult" => {
+                let reg = parse_reg(fields[0]);
+                let reg_2 = parse_reg(fields[1]);
+
+                let mult_opr = (registers.get(reg) as i32) as i64;
+                let mult_opr_2 = (registers.get(reg_2) as i32) as i64;
+
+                registers.set_hilo(mult_opr.wrapping_mul(mult_opr_2) as u64);
+            }
+            // Unsigned Multiplication
+            // Syntax: [Instruction] [Source], [Source]
+            "multu" => {
+                let reg = parse_reg(fields[0]);
+                let reg_2 = parse_reg(fields[1]);
+
+                let mult_opr = registers.get(reg) as u64;
+                let mult_opr_2 = registers.get(reg_2) as u64;
+
+                registers.set_hilo(mult_opr.wrapping_mul(mult_opr_2));
+            }
+            "mfhi" => {
+                let reg = parse_reg(fields[0]);
+                registers.set(reg, registers.get_hi());
+            }
+            "mflo" => {
+                let reg = parse_reg(fields[0]);
+                registers.set(reg, registers.get_lo());
+            }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
                 break;
@@ -264,11 +280,13 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         }
 
         println!(
-            "R10: {}, R8: {}, R7: {}",
-            registers.get(10),
+            "R9: {}, R8: {}, R7: {}",
+            registers.get(9),
             registers.get(8),
             registers.get(7)
         );
+
+        println!("hi: {}, lo: {}", registers.get_hi(), registers.get_lo());
     }
 }
 
