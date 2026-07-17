@@ -40,6 +40,8 @@ impl Registers {
     }
 
     fn get_lo(&self) -> u32 {
+        // implicit dereference
+        // (*self).hilo as u32
         self.hilo as u32
     }
 }
@@ -273,6 +275,34 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let reg = parse_reg(fields[0]);
                 registers.set(reg, registers.get_lo());
             }
+            // Signed Division
+            // Syntax: [Instruction] [Source], [Source]
+            "div" => {
+                let reg = parse_reg(fields[0]);
+                let reg_2 = parse_reg(fields[1]);
+
+                let div_opr = (registers.get(reg) as i32) as i64;
+                let div_opr_2 = (registers.get(reg_2) as i32) as i64;
+
+                let quotient = div_opr.wrapping_div(div_opr_2);
+                let remainder = div_opr.wrapping_rem(div_opr_2);
+
+                registers.set_hilo((remainder << 32 | quotient) as u64);
+            }
+            // Unsigned Division
+            // Syntax: [Instruction] [Source], [Source]
+            "divu" => {
+                let reg = parse_reg(fields[0]);
+                let reg_2 = parse_reg(fields[1]);
+
+                let div_opr = registers.get(reg) as u64;
+                let div_opr_2 = registers.get(reg_2) as u64;
+
+                let quotient = div_opr.wrapping_div(div_opr_2);
+                let remainder = div_opr.wrapping_rem(div_opr_2);
+
+                registers.set_hilo(remainder << 32 | quotient);
+            }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
                 break;
@@ -280,13 +310,12 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         }
 
         println!(
-            "R9: {}, R8: {}, R7: {}",
+            "R10: {}, R11: {}, R9: {}, R8: {}",
+            registers.get(10),
+            registers.get(11),
             registers.get(9),
-            registers.get(8),
-            registers.get(7)
+            registers.get(8)
         );
-
-        println!("hi: {}, lo: {}", registers.get_hi(), registers.get_lo());
     }
 }
 
