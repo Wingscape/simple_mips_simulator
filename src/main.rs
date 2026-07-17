@@ -119,7 +119,7 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
             "sll" => {
                 let dest = parse_reg(fields[0]);
                 let reg = parse_reg(fields[1]);
-                let imm = parse_imm(fields[2]);
+                let imm = parse_imm(fields[2]) & 31;
 
                 registers.set(dest, registers.get(reg) << imm);
             }
@@ -127,9 +127,17 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
             "srl" => {
                 let dest = parse_reg(fields[0]);
                 let reg = parse_reg(fields[1]);
-                let imm = parse_imm(fields[2]);
+                let imm = parse_imm(fields[2]) & 31;
 
                 registers.set(dest, registers.get(reg) >> imm);
+            }
+            // Syntax: [Instruction] [Destination], [Source], [Imm]
+            "sra" => {
+                let dest = parse_reg(fields[0]);
+                let reg = parse_reg(fields[1]);
+                let imm = parse_imm(fields[2]) & 31;
+
+                registers.set(dest, (registers.get(reg) as i32 >> imm) as u32);
             }
             // Syntax: [Instruction] [Destination], [Source], [Source]
             "or" => {
