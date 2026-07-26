@@ -345,7 +345,6 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 registers.set_hilo(remainder << 32 | quotient);
             }
-            // TODO: got segmentation fault, it should be simulate, so we not really accessing the memory
             // As with the lw instruction, the memory address must be word aligned (a multiple of four).
             // Syntax: [Instruction] [Destination], [Offset([Source])]
             "lw" => {
@@ -358,18 +357,15 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     }
                 };
 
-                let addr = registers.get(base_reg).wrapping_add(offset as u32);
-                // let ptr: *const u32 = (addr as usize) as *const u32;
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
 
-                // println!("has become addr: {}", addr);
+                let value: u32 = 0;
+                let step_1 = (value | memory[addr + 3] as u32) << 8;
+                let step_2 = (step_1 | memory[addr + 2] as u32) << 8;
+                let step_3 = (step_2 | memory[addr + 1] as u32) << 8;
+                let step_4 = step_3 | memory[addr] as u32;
 
-                // unsafe {
-                //     let val = *ptr;
-                //     println!("what the value we get from address? {}", val);
-                //     registers.set(dest, val);
-                // }
-
-                // TODO: get the data from memory based on address result
+                registers.set(dest, step_4);
                 // TODO: load delay implementation
             }
             // Syntax: [Instruction] [Source], [Offset([Source])]
@@ -391,22 +387,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let byte_3 = (value >> 16) as u8;
                 let byte_4 = (value >> 24) as u8;
 
-                // value for 8 bits
                 memory[addr] = byte_1;
-
-                if value > 255 {
-                    // value for 16 bits
-                    memory[addr + 1] = byte_2;
-                } else if value > 65535 {
-                    // value for 24 bits
-                    memory[addr + 2] = byte_3;
-                } else if value > 16777215 {
-                    // value for 32 bits
-                    memory[addr + 3] = byte_4;
-                } else {
-                    eprintln!("Something is not cool");
-                    break;
-                }
+                memory[addr + 1] = byte_2;
+                memory[addr + 2] = byte_3;
+                memory[addr + 3] = byte_4;
 
                 for curr in addr..addr + 4 {
                     println!("the value address of {}: {}", curr, memory[curr]);
