@@ -359,6 +359,19 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
 
+                if addr % 4 != 0 {
+                    eprintln!("unaligned address");
+                    break;
+                }
+
+                if addr + 3 >= memory.len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.len()
+                    );
+                    break;
+                }
+
                 let value: u32 = 0;
                 let step_1 = (value | memory[addr + 3] as u32) << 8;
                 let step_2 = (step_1 | memory[addr + 2] as u32) << 8;
