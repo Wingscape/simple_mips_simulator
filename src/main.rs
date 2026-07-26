@@ -50,6 +50,34 @@ fn parse_reg(field: &str) -> usize {
     field.trim_start_matches('$').parse().unwrap_or(0)
 }
 
+fn parse_offset(field: &str) -> Option<(i32, usize)> {
+    let len = match field.chars().position(|c| c == '(') {
+        Some(len) => len,
+        None => {
+            return None;
+        }
+    };
+
+    let end_len = match field.chars().position(|c| c == ')') {
+        Some(end_len) => end_len,
+        None => {
+            return None;
+        }
+    };
+
+    let reg = &field[len + 1..end_len];
+    let offset_raw = &field[0..len];
+
+    let offset = if offset_raw.starts_with("0x") {
+        // that means it's hex
+        i32::from_str_radix(offset_raw.trim_start_matches("0x"), 16).unwrap_or(0)
+    } else {
+        offset_raw.parse().unwrap_or(0)
+    };
+
+    Some((offset, parse_reg(reg)))
+}
+
 fn parse_imm(field: &str) -> u32 {
     if field.starts_with("0x") {
         // that means it's hex
@@ -74,6 +102,9 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
     // so we turn this into a custom data type so we can control in and out...
     // for registers by using the power of setter and getter abstraction
     let mut registers = Registers::new();
+
+    // 1024 bytes
+    let mut memory: [u8; 1024] = [0; 1024];
 
     while pc < lines.len() {
         println!("pc: {}", pc);
@@ -132,6 +163,9 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 registers.set(dest, registers.get(reg) >> imm);
             }
             // Syntax: [Instruction] [Destination], [Source], [Imm]
+            // actually 0..31 is the range that rust can give for
+            // because how the CPU works for only contraint to 5 circuits
+            // why? cause moving 32 bits, while leaving it all 0, is such a waste
             "sra" => {
                 let dest = parse_reg(fields[0]);
                 let reg = parse_reg(fields[1]);
@@ -311,6 +345,73 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 registers.set_hilo(remainder << 32 | quotient);
             }
+            // TODO: got segmentation fault, it should be simulate, so we not really accessing the memory
+            // As with the lw instruction, the memory address must be word aligned (a multiple of four).
+            // Syntax: [Instruction] [Destination], [Offset([Source])]
+            "lw" => {
+                let dest = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = registers.get(base_reg).wrapping_add(offset as u32);
+                // let ptr: *const u32 = (addr as usize) as *const u32;
+
+                // println!("has become addr: {}", addr);
+
+                // unsafe {
+                //     let val = *ptr;
+                //     println!("what the value we get from address? {}", val);
+                //     registers.set(dest, val);
+                // }
+
+                // TODO: get the data from memory based on address result
+                // TODO: load delay implementation
+            }
+            // Syntax: [Instruction] [Source], [Offset([Source])]
+            "sw" => {
+                let reg = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+                let value = registers.get(reg);
+
+                let byte_1 = value as u8;
+                let byte_2 = (value >> 8) as u8;
+                let byte_3 = (value >> 16) as u8;
+                let byte_4 = (value >> 24) as u8;
+
+                // value for 8 bits
+                memory[addr] = byte_1;
+
+                if value > 255 {
+                    // value for 16 bits
+                    memory[addr + 1] = byte_2;
+                } else if value > 65535 {
+                    // value for 24 bits
+                    memory[addr + 2] = byte_3;
+                } else if value > 16777215 {
+                    // value for 32 bits
+                    memory[addr + 3] = byte_4;
+                } else {
+                    eprintln!("Something is not cool");
+                    break;
+                }
+
+                for curr in addr..addr + 4 {
+                    println!("the value address of {}: {}", curr, memory[curr]);
+                }
+            }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
                 break;
@@ -318,11 +419,11 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         }
 
         println!(
-            "R10: {}, R11: {}, R9: {}, R8: {}",
-            registers.get(10),
-            registers.get(11),
-            registers.get(9),
-            registers.get(8)
+            "R3: {}, R2: {}, R1: {}, R0: {}",
+            registers.get(3),
+            registers.get(2),
+            registers.get(1),
+            registers.get(0)
         );
     }
 }
