@@ -122,6 +122,7 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
         // #3: execute the instruction
         match opc {
+            // TODO: shorthand ori
             // Syntax: [Instruction] [Destination], [Source], [Imm]
             "ori" => {
                 let dest = parse_reg(fields[0]);
@@ -393,8 +394,21 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 };
 
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
-                let value = registers.get(reg);
 
+                if addr % 4 != 0 {
+                    eprintln!("unaligned address");
+                    break;
+                }
+
+                if addr + 3 >= memory.len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.len()
+                    );
+                    break;
+                }
+
+                let value = registers.get(reg);
                 let byte_1 = value as u8;
                 let byte_2 = (value >> 8) as u8;
                 let byte_3 = (value >> 16) as u8;
@@ -404,10 +418,68 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 memory[addr + 1] = byte_2;
                 memory[addr + 2] = byte_3;
                 memory[addr + 3] = byte_4;
+            }
+            // load upper immediate 2 bytes of 32 bits
+            // Syntax: [Instruction] [Destination], [Immediate]
+            "lui" => {
+                let dest = parse_reg(fields[0]);
+                let imm = parse_imm(fields[1]) << 16;
 
-                for curr in addr..addr + 4 {
-                    println!("the value address of {}: {}", curr, memory[curr]);
+                registers.set(dest, imm);
+            }
+            // Syntax: [Instruction] [Destination], [Offset([Source])]
+            "lb" => {
+                let dest = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+
+                if addr >= memory.len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.len()
+                    );
+                    break;
                 }
+
+                let value = (memory[addr] as i8) as i32;
+                registers.set(dest, value as u32);
+            }
+            // Syntax: [Instruction] [Destination], [Offset([Source])]
+            "lbu" => {
+                let dest = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+                let value = memory[addr] as u32;
+                registers.set(dest, value);
+            }
+            // Syntax: [Instruction] [Source], [Offset([Source])]
+            "sb" => {
+                let reg = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+                let value = registers.get(reg) as u8;
+                memory[addr] = value;
             }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
@@ -415,13 +487,11 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
             }
         }
 
-        println!(
-            "R3: {}, R2: {}, R1: {}, R0: {}",
-            registers.get(3),
-            registers.get(2),
-            registers.get(1),
-            registers.get(0)
-        );
+        println!("R9: {}, R8: {}", registers.get(9), registers.get(8));
+    }
+
+    for curr in 16..16 + 4 {
+        println!("the value address of {}: {}", curr, memory[curr]);
     }
 }
 
