@@ -43,15 +43,23 @@
 // lw $3, 4($2)
 // addi $3, $3, 10
 
-lui $9, 0x1234
-ori $9, $9, 0x5678
-ori $8, $0, 0x10
+// lui $9, 0x1234
+// ori $9, $9, 0x5678
+// ori $8, $0, 0x10
 
 // big endian
-sb $9, 0x3($8)
-srl $9, $9, 8
-sb $9, 0x2($8)
-srl $9, $9, 8
-sb $9, 0x1($8)
-srl $9, $9, 8
-sb $9, 0x0($8)
+// sb $9, 0x3($8)
+// srl $9, $9, 8
+// sb $9, 0x2($8)
+// srl $9, $9, 8
+// sb $9, 0x1($8)
+// srl $9, $9, 8
+// sb $9, 0x0($8)
+
+// dangerous endless loop, but it works
+sll $0, $0, 0
+sll $0, $0, 0
+sll $0, $0, 0
+sll $0, $0, 0
+j 0x0
+addiu $8, $8, 1

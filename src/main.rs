@@ -105,6 +105,8 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
     // 1024 bytes
     let mut memory: [u8; 1024] = [0; 1024];
+    let mut tmp_pc: usize = 0;
+    let mut jmp = false;
 
     while pc < lines.len() {
         println!("pc: {}", pc);
@@ -118,7 +120,12 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         let fields: Vec<&str> = layout_field.split(",").map(|field| field.trim()).collect();
 
         // #2: increment the pc
-        pc += 1;
+        if jmp {
+            pc = tmp_pc;
+            jmp = false;
+        } else {
+            pc += 1;
+        }
 
         // #3: execute the instruction
         match opc {
@@ -480,6 +487,111 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
                 let value = registers.get(reg) as u8;
                 memory[addr] = value;
+            }
+            // As with the lh instruction, the memory address must be halfword aligned (a multiple of two).
+            // Syntax: [Instruction] [Destination], [Offset([Source])]
+            "lh" => {
+                let dest = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+
+                if addr % 2 != 0 {
+                    eprintln!("unaligned address");
+                    break;
+                }
+
+                if addr + 1 >= memory.len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.len()
+                    );
+                    break;
+                }
+
+                let value: u16 = 0;
+                let step_1 = (value | memory[addr + 1] as u16) << 8;
+                let step_2 = step_1 | memory[addr] as u16;
+
+                registers.set(dest, ((step_2 as i16) as i32) as u32);
+            }
+            // As with the lhu instruction, the memory address must be halfword aligned (a multiple of two).
+            // Syntax: [Instruction] [Destination], [Offset([Source])]
+            "lhu" => {
+                let dest = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+
+                if addr % 2 != 0 {
+                    eprintln!("unaligned address");
+                    break;
+                }
+
+                if addr + 1 >= memory.len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.len()
+                    );
+                    break;
+                }
+
+                let value: u16 = 0;
+                let step_1 = (value | memory[addr + 1] as u16) << 8;
+                let step_2 = step_1 | memory[addr] as u16;
+
+                registers.set(dest, step_2 as u32);
+            }
+            // Syntax: [Instruction] [Source], [Offset([Source])]
+            "sh" => {
+                let reg = parse_reg(fields[0]);
+                let (offset, base_reg) = match parse_offset(fields[1]) {
+                    Some((offset, base_reg)) => (offset, base_reg),
+                    None => {
+                        eprintln!("Offset field weird");
+                        break;
+                    }
+                };
+
+                let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+
+                if addr % 2 != 0 {
+                    eprintln!("unaligned address");
+                    break;
+                }
+
+                if addr + 1 >= memory.len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.len()
+                    );
+                    break;
+                }
+
+                let value = registers.get(reg);
+                let byte_1 = value as u8;
+                let byte_2 = (value >> 8) as u8;
+
+                memory[addr] = byte_1;
+                memory[addr + 1] = byte_2;
+            }
+            // Syntax: [Instruction] [Target]
+            "j" => {
+                let target = parse_imm(fields[0]);
+                jmp = true;
+                tmp_pc = target as usize;
             }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
