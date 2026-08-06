@@ -57,9 +57,10 @@
 // sb $9, 0x0($8)
 
 // dangerous endless loop, but it works
+main:
 sll $0, $0, 0
 sll $0, $0, 0
 sll $0, $0, 0
 sll $0, $0, 0
-j 0x0
+j main
 addiu $8, $8, 1

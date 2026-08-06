@@ -102,11 +102,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
     // so we turn this into a custom data type so we can control in and out...
     // for registers by using the power of setter and getter abstraction
     let mut registers = Registers::new();
-
-    // 1024 bytes
     let mut memory: [u8; 1024] = [0; 1024];
-    let mut tmp_pc: usize = 0;
+
     let mut jmp = false;
+    let mut jmp_pc: usize = 0;
 
     while pc < lines.len() {
         println!("pc: {}", pc);
@@ -121,8 +120,8 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
         // #2: increment the pc
         if jmp {
-            pc = tmp_pc;
             jmp = false;
+            pc = jmp_pc;
         } else {
             pc += 1;
         }
@@ -588,10 +587,33 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 memory[addr + 1] = byte_2;
             }
             // Syntax: [Instruction] [Target]
-            "j" => {
-                let target = parse_imm(fields[0]);
-                jmp = true;
-                tmp_pc = target as usize;
+            "j" => match jmp_labels.get(fields[0]) {
+                Some(value) => {
+                    jmp = true;
+                    jmp_pc = *value
+                }
+                _ => {
+                    eprintln!("Label not found: {}", fields[2]);
+                    break;
+                }
+            },
+            // Syntax: [Instruction] [Source], [Source], [Target]
+            "beq" => {
+                let opr_1 = parse_reg(fields[0]);
+                let opr_2 = parse_reg(fields[1]);
+
+                if registers.get(opr_1) == registers.get(opr_2) {
+                    match jmp_labels.get(fields[2]) {
+                        Some(value) => {
+                            jmp = true;
+                            jmp_pc = *value
+                        }
+                        _ => {
+                            eprintln!("Label not found: {}", fields[2]);
+                            break;
+                        }
+                    }
+                }
             }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
