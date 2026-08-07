@@ -57,10 +57,33 @@
 // sb $9, 0x0($8)
 
 // dangerous endless loop, but it works
-main:
+// main:
+// sll $0, $0, 0
+// sll $0, $0, 0
+// sll $0, $0, 0
+// sll $0, $0, 0
+// j main
+// addiu $8, $8, 1
+
+lui $10, 0x0
+
+// store the number
+addi $1, $0, -1
+sw $1, 0($10)
+
+// load the number
+lw $8, 0($10)
 sll $0, $0, 0
+
+// is it negative?
+srl $9, $8, 31
+beq $0, $9, done
 sll $0, $0, 0
+
+// it's negative
+// so we turn it into positive
+subu $8, $0, $8
+
+
+// it's positive
 sll $0, $0, 0
-sll $0, $0, 0
-j main
-addiu $8, $8, 1

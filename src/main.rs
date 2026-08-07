@@ -615,16 +615,40 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     }
                 }
             }
+            // Syntax: [Instruction] [Source], [Source], [Target]
+            "bne" => {
+                let opr_1 = parse_reg(fields[0]);
+                let opr_2 = parse_reg(fields[1]);
+
+                if registers.get(opr_1) != registers.get(opr_2) {
+                    match jmp_labels.get(fields[2]) {
+                        Some(value) => {
+                            jmp = true;
+                            jmp_pc = *value
+                        }
+                        _ => {
+                            eprintln!("Label not found: {}", fields[2]);
+                            break;
+                        }
+                    }
+                }
+            }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
                 break;
             }
         }
 
-        println!("R9: {}, R8: {}", registers.get(9), registers.get(8));
+        println!(
+            "R10: {}, R9: {}, R8: {}, R1: {}",
+            registers.get(10),
+            registers.get(9),
+            registers.get(8),
+            registers.get(1),
+        );
     }
 
-    for curr in 16..16 + 4 {
+    for curr in 0..0 + 4 {
         println!("the value address of {}: {}", curr, memory[curr]);
     }
 }
