@@ -65,25 +65,46 @@
 // j main
 // addiu $8, $8, 1
 
-lui $10, 0x0
+// lui $10, 0x0
 
 // store the number
-addi $1, $0, -1
-sw $1, 0($10)
+// addi $1, $0, -1
+// sw $1, 0($10)
 
 // load the number
-lw $8, 0($10)
-sll $0, $0, 0
+// lw $8, 0($10)
+// sll $0, $0, 0
 
 // is it negative?
-srl $9, $8, 31
-beq $0, $9, done
-sll $0, $0, 0
+// srl $9, $8, 31
+// beq $0, $9, done
+// sll $0, $0, 0
 
 // it's negative
 // so we turn it into positive
-subu $8, $0, $8
-
+// subu $8, $0, $8
+// sw $8, 0($10)
 
 // it's positive
+// sll $0, $0, 0
+
+ori $3, $0, 1
+
+ori $2, $0, 40
+ori $4, $0, 29
+
+sltiu $6, $2, 56
+sltu $7, $4, $2
+
+and $8, $6, $7
+beq $8, $0, false
+sll $0, $0, 0
+
+j fine
+sll $0, $0, 0
+
+false:
+ori $3, $0, 0
+
+fine:
 sll $0, $0, 0

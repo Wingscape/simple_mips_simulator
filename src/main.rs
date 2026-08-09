@@ -633,6 +633,90 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     }
                 }
             }
+            // Register's content assume a two's complement
+            // Syntax: [Instruction] [Source], [Target]
+            "bltz" => {
+                let opr_1 = parse_reg(fields[0]);
+
+                if (registers.get(opr_1) as i32) < 0 {
+                    match jmp_labels.get(fields[2]) {
+                        Some(value) => {
+                            jmp = true;
+                            jmp_pc = *value
+                        }
+                        _ => {
+                            eprintln!("Label not found: {}", fields[2]);
+                            break;
+                        }
+                    }
+                }
+            }
+            // Register's content assume a two's complement
+            // Syntax: [Instruction] [Source], [Target]
+            "bgez" => {
+                let opr_1 = parse_reg(fields[0]);
+
+                if (registers.get(opr_1) as i32) >= 0 {
+                    match jmp_labels.get(fields[2]) {
+                        Some(value) => {
+                            jmp = true;
+                            jmp_pc = *value
+                        }
+                        _ => {
+                            eprintln!("Label not found: {}", fields[2]);
+                            break;
+                        }
+                    }
+                }
+            }
+            // Syntax: [Instruction], [Destination], [Source], [Source]
+            "slt" => {
+                let dest = parse_reg(fields[0]);
+                let opr_1 = parse_reg(fields[1]);
+                let opr_2 = parse_reg(fields[2]);
+
+                if (registers.get(opr_1) as i32) < (registers.get(opr_2) as i32) {
+                    registers.set(dest, 1);
+                } else {
+                    registers.set(dest, 0);
+                }
+            }
+            // Syntax: [Instruction], [Destination], [Source], [Source]
+            "sltu" => {
+                let dest = parse_reg(fields[0]);
+                let opr_1 = parse_reg(fields[1]);
+                let opr_2 = parse_reg(fields[2]);
+
+                if registers.get(opr_1) < registers.get(opr_2) {
+                    registers.set(dest, 1);
+                } else {
+                    registers.set(dest, 0);
+                }
+            }
+            // Syntax: [Instruction], [Destination], [Source], [Imm]
+            "slti" => {
+                let dest = parse_reg(fields[0]);
+                let opr_1 = parse_reg(fields[1]);
+                let imm = parse_imm_signed(fields[2]);
+
+                if (registers.get(opr_1) as i32) < imm {
+                    registers.set(dest, 1);
+                } else {
+                    registers.set(dest, 0);
+                }
+            }
+            // Syntax: [Instruction], [Destination], [Source], [Imm]
+            "sltiu" => {
+                let dest = parse_reg(fields[0]);
+                let opr_1 = parse_reg(fields[1]);
+                let imm = parse_imm(fields[2]);
+
+                if registers.get(opr_1) < imm {
+                    registers.set(dest, 1);
+                } else {
+                    registers.set(dest, 0);
+                }
+            }
             _ => {
                 eprintln!("Opcode not found: {}", opc);
                 break;
@@ -640,11 +724,11 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         }
 
         println!(
-            "R10: {}, R9: {}, R8: {}, R1: {}",
-            registers.get(10),
-            registers.get(9),
-            registers.get(8),
-            registers.get(1),
+            "R2: {}, R3: {}, R6: {}, R7: {}",
+            registers.get(2),
+            registers.get(3),
+            registers.get(6),
+            registers.get(7),
         );
     }
 
