@@ -724,10 +724,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
         }
 
         println!(
-            "R2: {}, R3: {}, R6: {}, R7: {}",
-            registers.get(2),
-            registers.get(3),
-            registers.get(6),
+            "R10: {}, R9: {}, R8: {}, R7: {}",
+            registers.get(10),
+            registers.get(9),
+            registers.get(8),
             registers.get(7),
         );
     }
