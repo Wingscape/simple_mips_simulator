@@ -88,40 +88,63 @@
 // it's positive
 // sll $0, $0, 0
 
-//ori $3, $0, 1
+// ori $3, $0, 1
 
-//ori $2, $0, 40
-//ori $4, $0, 29
+// ori $2, $0, 40
+// ori $4, $0, 29
 
-//sltiu $6, $2, 56
-//sltu $7, $4, $2
+// sltiu $6, $2, 56
+// sltu $7, $4, $2
 
-//and $8, $6, $7
-//beq $8, $0, false
-//sll $0, $0, 0
+// and $8, $6, $7
+// beq $8, $0, false
+// sll $0, $0, 0
 
-//j fine
-//sll $0, $0, 0
+// j fine
+// sll $0, $0, 0
 
-//false:
-//ori $3, $0, 0
+// false:
+// ori $3, $0, 0
 
-//fine:
-//sll $0, $0, 0
+// fine:
+// sll $0, $0, 0
 
-ori $10, $0, 0
+// ori $10, $0, 0
+// ori $8, $0, 0
+
+// test:
+// sltiu $9, $8, 10
+// beq $9, $0, endLp
+// sll $0, $0, 0
+
+// addu $10, $10, $8
+
+// addiu $8, $8, 1
+// j test
+// sll $0, $0, 0
+
+// endLp:
+// sll $0, $0, 0
+
+// string length program
 ori $8, $0, 0
+lui $9, 0x0
 
-test:
-sltiu $9, $8, 10
-beq $9, $0, endLp
+loop:
+lbu $10, 0($9)
 sll $0, $0, 0
 
-addu $10, $10, $8
+beq $10, $0, done
+sll $0, $0, 0
 
 addiu $8, $8, 1
-j test
+addiu $9, $9, 1
+
+j loop
 sll $0, $0, 0
 
-endLp:
+done:
 sll $0, $0, 0
+
+string:
+.asciiz "Time is the ghost of space."

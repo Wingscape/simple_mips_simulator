@@ -6,6 +6,10 @@ struct Registers {
     hilo: u64,
 }
 
+struct Memory {
+    memory: [u8; 1024],
+}
+
 // abstraction
 impl Registers {
     fn new() -> Self {
@@ -43,6 +47,24 @@ impl Registers {
         // implicit dereference
         // (*self).hilo as u32
         self.hilo as u32
+    }
+}
+
+impl Memory {
+    fn new() -> Self {
+        Self { memory: [0; 1024] }
+    }
+
+    fn set(&mut self, index: usize, value: u8) {
+        self.memory[index] = value;
+    }
+
+    fn get(&self, index: usize) -> u8 {
+        self.memory[index]
+    }
+
+    fn get_len(&self) -> usize {
+        self.memory.len()
     }
 }
 
@@ -92,7 +114,7 @@ fn parse_imm_signed(field: &str) -> i32 {
 }
 
 // this code also simulates how the machine cycle works under the hood
-fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
+fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<String, usize>) {
     let mut pc = 0;
 
     // we create a wrapper around registers
@@ -102,8 +124,6 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
     // so we turn this into a custom data type so we can control in and out...
     // for registers by using the power of setter and getter abstraction
     let mut registers = Registers::new();
-    let mut memory: [u8; 1024] = [0; 1024];
-
     let mut jmp = false;
     let mut jmp_pc: usize = 0;
 
@@ -371,19 +391,19 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     break;
                 }
 
-                if addr + 3 >= memory.len() {
+                if addr + 3 >= memory.get_len() {
                     eprintln!(
                         "address is out of bounds, which what we currently have is: {}",
-                        memory.len()
+                        memory.get_len()
                     );
                     break;
                 }
 
                 let value: u32 = 0;
-                let step_1 = (value | memory[addr + 3] as u32) << 8;
-                let step_2 = (step_1 | memory[addr + 2] as u32) << 8;
-                let step_3 = (step_2 | memory[addr + 1] as u32) << 8;
-                let step_4 = step_3 | memory[addr] as u32;
+                let step_1 = (value | memory.get(addr + 3) as u32) << 8;
+                let step_2 = (step_1 | memory.get(addr + 2) as u32) << 8;
+                let step_3 = (step_2 | memory.get(addr + 1) as u32) << 8;
+                let step_4 = step_3 | memory.get(addr) as u32;
 
                 registers.set(dest, step_4);
                 // TODO: load delay implementation
@@ -406,10 +426,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     break;
                 }
 
-                if addr + 3 >= memory.len() {
+                if addr + 3 >= memory.get_len() {
                     eprintln!(
                         "address is out of bounds, which what we currently have is: {}",
-                        memory.len()
+                        memory.get_len()
                     );
                     break;
                 }
@@ -420,10 +440,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let byte_3 = (value >> 16) as u8;
                 let byte_4 = (value >> 24) as u8;
 
-                memory[addr] = byte_1;
-                memory[addr + 1] = byte_2;
-                memory[addr + 2] = byte_3;
-                memory[addr + 3] = byte_4;
+                memory.set(addr, byte_1);
+                memory.set(addr + 1, byte_2);
+                memory.set(addr + 2, byte_3);
+                memory.set(addr + 3, byte_4);
             }
             // load upper immediate 2 bytes of 32 bits
             // Syntax: [Instruction] [Destination], [Immediate]
@@ -446,15 +466,15 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
 
-                if addr >= memory.len() {
+                if addr >= memory.get_len() {
                     eprintln!(
                         "address is out of bounds, which what we currently have is: {}",
-                        memory.len()
+                        memory.get_len()
                     );
                     break;
                 }
 
-                let value = (memory[addr] as i8) as i32;
+                let value = (memory.get(addr) as i8) as i32;
                 registers.set(dest, value as u32);
             }
             // Syntax: [Instruction] [Destination], [Offset([Source])]
@@ -469,7 +489,7 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 };
 
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
-                let value = memory[addr] as u32;
+                let value = memory.get(addr) as u32;
                 registers.set(dest, value);
             }
             // Syntax: [Instruction] [Source], [Offset([Source])]
@@ -485,7 +505,7 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
 
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
                 let value = registers.get(reg) as u8;
-                memory[addr] = value;
+                memory.set(addr, value);
             }
             // As with the lh instruction, the memory address must be halfword aligned (a multiple of two).
             // Syntax: [Instruction] [Destination], [Offset([Source])]
@@ -506,17 +526,17 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     break;
                 }
 
-                if addr + 1 >= memory.len() {
+                if addr + 1 >= memory.get_len() {
                     eprintln!(
                         "address is out of bounds, which what we currently have is: {}",
-                        memory.len()
+                        memory.get_len()
                     );
                     break;
                 }
 
                 let value: u16 = 0;
-                let step_1 = (value | memory[addr + 1] as u16) << 8;
-                let step_2 = step_1 | memory[addr] as u16;
+                let step_1 = (value | memory.get(addr + 1) as u16) << 8;
+                let step_2 = step_1 | memory.get(addr) as u16;
 
                 registers.set(dest, ((step_2 as i16) as i32) as u32);
             }
@@ -539,17 +559,17 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     break;
                 }
 
-                if addr + 1 >= memory.len() {
+                if addr + 1 >= memory.get_len() {
                     eprintln!(
                         "address is out of bounds, which what we currently have is: {}",
-                        memory.len()
+                        memory.get_len()
                     );
                     break;
                 }
 
                 let value: u16 = 0;
-                let step_1 = (value | memory[addr + 1] as u16) << 8;
-                let step_2 = step_1 | memory[addr] as u16;
+                let step_1 = (value | memory.get(addr + 1) as u16) << 8;
+                let step_2 = step_1 | memory.get(addr) as u16;
 
                 registers.set(dest, step_2 as u32);
             }
@@ -571,10 +591,10 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                     break;
                 }
 
-                if addr + 1 >= memory.len() {
+                if addr + 1 >= memory.get_len() {
                     eprintln!(
                         "address is out of bounds, which what we currently have is: {}",
-                        memory.len()
+                        memory.get_len()
                     );
                     break;
                 }
@@ -583,8 +603,8 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
                 let byte_1 = value as u8;
                 let byte_2 = (value >> 8) as u8;
 
-                memory[addr] = byte_1;
-                memory[addr + 1] = byte_2;
+                memory.set(addr, byte_1);
+                memory.set(addr + 1, byte_2);
             }
             // Syntax: [Instruction] [Target]
             "j" => match jmp_labels.get(fields[0]) {
@@ -731,10 +751,6 @@ fn execute_lines(lines: Vec<&str>, jmp_labels: &HashMap<String, usize>) {
             registers.get(7),
         );
     }
-
-    for curr in 0..0 + 4 {
-        println!("the value address of {}: {}", curr, memory[curr]);
-    }
 }
 
 fn run_file() {
@@ -746,27 +762,62 @@ fn run_file() {
         .collect();
 
     let mut lines = vec![];
+    let mut memory = Memory::new();
+
     let mut queued_labels = vec![];
     let mut jmp_labels = HashMap::new();
 
     for line in input_lines {
+        let is_data_seg = line.starts_with(".");
+
         if line.ends_with(":") {
             queued_labels.push(line);
         } else {
             while let Some(queued_label) = queued_labels.pop() {
-                jmp_labels.insert(queued_label.trim_end_matches(":").to_string(), lines.len());
+                if is_data_seg {
+                    let (directive, value) =
+                        line.split_once(char::is_whitespace).unwrap_or(("", ""));
+
+                    let value = value.trim().trim_matches('"');
+
+                    match directive {
+                        ".asciiz" => {
+                            let mut char_idx = 0;
+
+                            for letter in value.chars() {
+                                memory.set(char_idx, letter as u8);
+                                char_idx = char_idx + 1;
+                            }
+
+                            // TODO: is it really 0 for this?
+                            jmp_labels.insert(queued_label.trim_end_matches(":").to_string(), 0);
+                        }
+                        _ => {
+                            eprintln!("Directive not found: {}", directive);
+                            break;
+                        }
+                    }
+                } else {
+                    jmp_labels.insert(queued_label.trim_end_matches(":").to_string(), lines.len());
+                }
             }
 
-            lines.push(line);
+            if !is_data_seg {
+                lines.push(line);
+            }
         }
     }
 
     // debug
-    for dict in jmp_labels.values() {
-        println!("jmp line: {}", dict);
+    for bla in 0..memory.get_len() - 1 {
+        println!("{}", memory.get(bla));
+
+        if bla == 40 {
+            break;
+        }
     }
 
-    execute_lines(lines, &jmp_labels);
+    execute_lines(lines, memory, &jmp_labels);
 }
 
 fn main() {
