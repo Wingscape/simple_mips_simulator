@@ -127,18 +127,60 @@
 // sll $0, $0, 0
 
 // string length program
+// ori $8, $0, 0
+// lui $9, 0x0
+
+// loop:
+// lbu $10, 0($9)
+// sll $0, $0, 0
+
+// beq $10, $0, done
+// sll $0, $0, 0
+
+// addiu $8, $8, 1
+// addiu $9, $9, 1
+
+// j loop
+// sll $0, $0, 0
+
+// done:
+// sll $0, $0, 0
+
+// string:
+// .asciiz "Time is the ghost of space."
+
+// sum all, positive, negative integers
 ori $8, $0, 0
+ori $11, $0, 0
+ori $12, $0, 0
+ori $13, $0, 0
 lui $9, 0x0
 
+lw $15, 0($9)
+addiu $9, $9, 4
+
 loop:
-lbu $10, 0($9)
+beq $8, $15, done
 sll $0, $0, 0
 
-beq $10, $0, done
+lw $10, 0($9)
+sll $0, $0, 0
+addu $11, $11, $10
+
+slti $14, $10, 0x0
+bne $14, $0, neg
 sll $0, $0, 0
 
+addu $13, $13, $10
+j ifend
+sll $0, $0, 0
+
+neg:
+addu $12, $12, $10
+
+ifend:
 addiu $8, $8, 1
-addiu $9, $9, 1
+addiu $9, $9, 4
 
 j loop
 sll $0, $0, 0
@@ -146,5 +188,8 @@ sll $0, $0, 0
 done:
 sll $0, $0, 0
 
-string:
-.asciiz "Time is the ghost of space."
+size:
+.word 4
+
+array:
+.word 1, 2, -2, -1

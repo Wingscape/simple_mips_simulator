@@ -744,11 +744,15 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
         }
 
         println!(
-            "R10: {}, R9: {}, R8: {}, R7: {}",
+            "R15: {}, R14: {}, R13: {}, R12: {}, R11: {}, R10: {}, R9: {}, R8: {}",
+            registers.get(15),
+            registers.get(14),
+            registers.get(13),
+            registers.get(12),
+            registers.get(11),
             registers.get(10),
             registers.get(9),
             registers.get(8),
-            registers.get(7),
         );
     }
 }
@@ -763,6 +767,7 @@ fn run_file() {
 
     let mut lines = vec![];
     let mut memory = Memory::new();
+    let mut data_address = 0;
 
     let mut queued_labels = vec![];
     let mut jmp_labels = HashMap::new();
@@ -778,19 +783,58 @@ fn run_file() {
                     let (directive, value) =
                         line.split_once(char::is_whitespace).unwrap_or(("", ""));
 
-                    let value = value.trim().trim_matches('"');
+                    let value = value.trim();
 
                     match directive {
                         ".asciiz" => {
-                            let mut char_idx = 0;
+                            let value = value.trim_matches('"');
+                            let mut char_idx = data_address;
 
                             for letter in value.chars() {
                                 memory.set(char_idx, letter as u8);
                                 char_idx = char_idx + 1;
                             }
 
-                            // TODO: is it really 0 for this?
-                            jmp_labels.insert(queued_label.trim_end_matches(":").to_string(), 0);
+                            jmp_labels.insert(
+                                queued_label.trim_end_matches(":").to_string(),
+                                data_address,
+                            );
+                            data_address = char_idx + 1;
+                        }
+                        ".word" => {
+                            let elements: Vec<i32> = value
+                                .split(",")
+                                .map(|element| element.trim().parse().unwrap_or(0))
+                                .collect();
+
+                            // address alignment padding
+                            if data_address % 4 != 0 {
+                                data_address = data_address + 4 - (data_address % 4);
+                            }
+
+                            let mut idx = data_address;
+
+                            for element in elements {
+                                let word = element as u32;
+
+                                let byte_1 = word as u8;
+                                let byte_2 = (word >> 8) as u8;
+                                let byte_3 = (word >> 16) as u8;
+                                let byte_4 = (word >> 24) as u8;
+
+                                memory.set(idx, byte_1);
+                                memory.set(idx + 1, byte_2);
+                                memory.set(idx + 2, byte_3);
+                                memory.set(idx + 3, byte_4);
+
+                                idx = idx + 4;
+                            }
+
+                            jmp_labels.insert(
+                                queued_label.trim_end_matches(":").to_string(),
+                                data_address,
+                            );
+                            data_address = idx;
                         }
                         _ => {
                             eprintln!("Directive not found: {}", directive);
