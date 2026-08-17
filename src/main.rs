@@ -170,7 +170,6 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
 
         // #3: execute the instruction
         match opc {
-            // TODO: shorthand ori
             // Syntax: [Instruction] [Destination], [Source], [Imm]
             "ori" => {
                 let dest = parse_reg(fields[0]);
