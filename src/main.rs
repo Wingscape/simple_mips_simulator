@@ -4,6 +4,7 @@ use std::fs;
 struct Registers {
     registers: [u32; 31],
     hilo: u64,
+    delay_reg: usize,
 }
 
 struct Memory {
@@ -16,12 +17,20 @@ impl Registers {
         Self {
             registers: [0; 31],
             hilo: 0,
+            delay_reg: 0,
+        }
+    }
+
+    fn check_delay_reg(&self, index: &usize) {
+        if self.delay_reg == *index {
+            eprintln!("You shouldn't access the register immediately after load");
         }
     }
 
     // here we can modify the in
     fn set(&mut self, index: usize, value: u32) {
         if index > 0 {
+            self.check_delay_reg(&index);
             self.registers[index - 1] = value;
         }
     }
@@ -31,8 +40,19 @@ impl Registers {
         if index == 0 {
             0
         } else {
+            self.check_delay_reg(&index);
             self.registers[index - 1]
         }
+    }
+
+    fn set_delay(&mut self, index: usize) {
+        if index > 0 {
+            self.delay_reg = index;
+        }
+    }
+
+    fn reset_delay(&mut self) {
+        self.delay_reg = 0;
     }
 
     fn set_hilo(&mut self, value: u64) {
@@ -115,8 +135,6 @@ fn parse_imm_signed(field: &str) -> i32 {
 
 // this code also simulates how the machine cycle works under the hood
 fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<String, usize>) {
-    let mut pc = 0;
-
     // we create a wrapper around registers
     // why wrapper? well we had a vector to intialize...
     // but then we cannot do anything with accessing array or storing it...
@@ -124,7 +142,11 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
     // so we turn this into a custom data type so we can control in and out...
     // for registers by using the power of setter and getter abstraction
     let mut registers = Registers::new();
-    let mut jmp = false;
+
+    let mut is_delay = false;
+    let mut is_jmp = false;
+
+    let mut pc = 0;
     let mut jmp_pc: usize = 0;
 
     while pc < lines.len() {
@@ -139,8 +161,8 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
         let fields: Vec<&str> = layout_field.split(",").map(|field| field.trim()).collect();
 
         // #2: increment the pc
-        if jmp {
-            jmp = false;
+        if is_jmp {
+            is_jmp = false;
             pc = jmp_pc;
         } else {
             pc += 1;
@@ -406,7 +428,10 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 let step_4 = step_3 | memory.get(addr) as u32;
 
                 registers.set(dest, step_4);
-                // TODO: load delay implementation
+                registers.set_delay(dest);
+
+                is_delay = true;
+                continue;
             }
             // Syntax: [Instruction] [Source], [Offset([Source])]
             "sw" => {
@@ -609,7 +634,7 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
             // Syntax: [Instruction] [Target]
             "j" => match jmp_labels.get(fields[0]) {
                 Some(value) => {
-                    jmp = true;
+                    is_jmp = true;
                     jmp_pc = *value
                 }
                 _ => {
@@ -625,7 +650,7 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 if registers.get(opr_1) == registers.get(opr_2) {
                     match jmp_labels.get(fields[2]) {
                         Some(value) => {
-                            jmp = true;
+                            is_jmp = true;
                             jmp_pc = *value
                         }
                         _ => {
@@ -643,7 +668,7 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 if registers.get(opr_1) != registers.get(opr_2) {
                     match jmp_labels.get(fields[2]) {
                         Some(value) => {
-                            jmp = true;
+                            is_jmp = true;
                             jmp_pc = *value
                         }
                         _ => {
@@ -661,7 +686,7 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 if (registers.get(opr_1) as i32) < 0 {
                     match jmp_labels.get(fields[2]) {
                         Some(value) => {
-                            jmp = true;
+                            is_jmp = true;
                             jmp_pc = *value
                         }
                         _ => {
@@ -679,7 +704,7 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 if (registers.get(opr_1) as i32) >= 0 {
                     match jmp_labels.get(fields[2]) {
                         Some(value) => {
-                            jmp = true;
+                            is_jmp = true;
                             jmp_pc = *value
                         }
                         _ => {
@@ -741,6 +766,11 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 eprintln!("Opcode not found: {}", opc);
                 break;
             }
+        }
+
+        if is_delay {
+            registers.reset_delay();
+            is_delay = false;
         }
 
         println!(
