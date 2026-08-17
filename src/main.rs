@@ -501,6 +501,10 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
 
                 let value = (memory.get(addr) as i8) as i32;
                 registers.set(dest, value as u32);
+                registers.set_delay(dest);
+
+                is_delay = true;
+                continue;
             }
             // Syntax: [Instruction] [Destination], [Offset([Source])]
             "lbu" => {
@@ -514,8 +518,21 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 };
 
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+
+                if addr >= memory.get_len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.get_len()
+                    );
+                    break;
+                }
+
                 let value = memory.get(addr) as u32;
                 registers.set(dest, value);
+                registers.set_delay(dest);
+
+                is_delay = true;
+                continue;
             }
             // Syntax: [Instruction] [Source], [Offset([Source])]
             "sb" => {
@@ -564,6 +581,10 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 let step_2 = step_1 | memory.get(addr) as u16;
 
                 registers.set(dest, ((step_2 as i16) as i32) as u32);
+                registers.set_delay(dest);
+
+                is_delay = true;
+                continue;
             }
             // As with the lhu instruction, the memory address must be halfword aligned (a multiple of two).
             // Syntax: [Instruction] [Destination], [Offset([Source])]
@@ -597,6 +618,10 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 let step_2 = step_1 | memory.get(addr) as u16;
 
                 registers.set(dest, step_2 as u32);
+                registers.set_delay(dest);
+
+                is_delay = true;
+                continue;
             }
             // Syntax: [Instruction] [Source], [Offset([Source])]
             "sh" => {
