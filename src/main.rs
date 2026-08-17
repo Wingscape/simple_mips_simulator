@@ -377,7 +377,8 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 let quotient = div_opr.wrapping_div(div_opr_2);
                 let remainder = div_opr.wrapping_rem(div_opr_2);
 
-                registers.set_hilo((remainder << 32 | quotient) as u64);
+                let hilo = ((remainder as u32 as u64) << 32) | (quotient as u32 as u64);
+                registers.set_hilo(hilo);
             }
             // Unsigned Division
             // Syntax: [Instruction] [Source], [Source]
@@ -545,6 +546,15 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 };
 
                 let addr = (registers.get(base_reg).wrapping_add(offset as u32)) as usize;
+
+                if addr >= memory.get_len() {
+                    eprintln!(
+                        "address is out of bounds, which what we currently have is: {}",
+                        memory.get_len()
+                    );
+                    break;
+                }
+
                 let value = registers.get(reg) as u8;
                 memory.set(addr, value);
             }
@@ -662,7 +672,7 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                     jmp_pc = *value
                 }
                 _ => {
-                    eprintln!("Label not found: {}", fields[2]);
+                    eprintln!("Label not found: {}", fields[0]);
                     break;
                 }
             },
@@ -708,13 +718,13 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 let opr_1 = parse_reg(fields[0]);
 
                 if (registers.get(opr_1) as i32) < 0 {
-                    match jmp_labels.get(fields[2]) {
+                    match jmp_labels.get(fields[1]) {
                         Some(value) => {
                             is_jmp = true;
                             jmp_pc = *value
                         }
                         _ => {
-                            eprintln!("Label not found: {}", fields[2]);
+                            eprintln!("Label not found: {}", fields[1]);
                             break;
                         }
                     }
@@ -726,13 +736,13 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 let opr_1 = parse_reg(fields[0]);
 
                 if (registers.get(opr_1) as i32) >= 0 {
-                    match jmp_labels.get(fields[2]) {
+                    match jmp_labels.get(fields[1]) {
                         Some(value) => {
                             is_jmp = true;
                             jmp_pc = *value
                         }
                         _ => {
-                            eprintln!("Label not found: {}", fields[2]);
+                            eprintln!("Label not found: {}", fields[1]);
                             break;
                         }
                     }
@@ -903,15 +913,6 @@ fn run_file() {
             if !is_data_seg {
                 lines.push(line);
             }
-        }
-    }
-
-    // debug
-    for bla in 0..memory.get_len() - 1 {
-        println!("{}", memory.get(bla));
-
-        if bla == 40 {
-            break;
         }
     }
 
