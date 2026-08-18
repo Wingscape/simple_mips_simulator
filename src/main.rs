@@ -299,17 +299,17 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
             "addi" => {
                 let dest = parse_reg(fields[0]);
                 let reg = parse_reg(fields[1]);
-                let imm = parse_imm_signed(fields[2]) as u32;
+                let imm = parse_imm_signed(fields[2]);
 
                 // if overflow occurs, just panic the assembly program itself
-                let (result, is_overflow) = registers.get(reg).overflowing_add(imm);
+                let (result, is_overflow) = (registers.get(reg) as i32).overflowing_add(imm);
 
                 if is_overflow {
                     eprintln!("Overflow just occured!");
                     break;
                 }
 
-                registers.set(dest, result);
+                registers.set(dest, result as u32);
             }
             // Syntax: [Instruction] [Destination], [Source], [Source]
             "subu" => {
@@ -327,14 +327,14 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
 
                 // if overflow occurs, just panic the assembly program itself
                 let (result, is_overflow) =
-                    registers.get(reg).overflowing_sub(registers.get(reg_2));
+                    (registers.get(reg) as i32).overflowing_sub(registers.get(reg_2) as i32);
 
                 if is_overflow {
                     eprintln!("Overflow just occured!");
                     break;
                 }
 
-                registers.set(dest, result);
+                registers.set(dest, result as u32);
             }
             // Signed Multiplication
             // Syntax: [Instruction] [Source], [Source]
