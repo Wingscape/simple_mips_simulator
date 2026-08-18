@@ -274,15 +274,16 @@ fn execute_lines(lines: Vec<&str>, mut memory: Memory, jmp_labels: &HashMap<Stri
                 let reg_2 = parse_reg(fields[2]);
 
                 // if overflow occurs, just panic the assembly program itself
+                // traps on two's complement
                 let (result, is_overflow) =
-                    registers.get(reg).overflowing_add(registers.get(reg_2));
+                    (registers.get(reg) as i32).overflowing_add(registers.get(reg_2) as i32);
 
                 if is_overflow {
                     eprintln!("Overflow just occured!");
                     break;
                 }
 
-                registers.set(dest, result);
+                registers.set(dest, result as u32);
             }
             // so addiu and addi both always treat the immediate as signed integer
             // Syntax: [Instruction] [Destination], [Source], [Imm]
